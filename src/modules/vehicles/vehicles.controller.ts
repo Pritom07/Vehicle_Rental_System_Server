@@ -33,4 +33,22 @@ const viewAllVehicles = async (req: Request, res: Response) => {
   }
 };
 
-export const vehiclesController = { addVehicles, viewAllVehicles };
+const viewVehicle = async (req: Request, res: Response) => {
+  try {
+    const result = await vehiclesServices.viewVehicle(
+      req.params.vehicleId as string
+    );
+    res.status(200).json({
+      success: true,
+      message: "Vehicle retrieved successfully",
+      data: result.rows[0],
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: `Error Occured : ${err.message}`,
+    });
+  }
+};
+
+export const vehiclesController = { addVehicles, viewAllVehicles, viewVehicle };

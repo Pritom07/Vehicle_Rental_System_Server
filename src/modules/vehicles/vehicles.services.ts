@@ -26,4 +26,9 @@ const viewAllVehicles = async () => {
   return result;
 };
 
-export const vehiclesServices = { addVehicles, viewAllVehicles };
+const viewVehicle = async (id: string) => {
+  const result = await pool.query(`SELECT * FROM Vehicles WHERE id=$1`, [id]);
+  return result;
+};
+
+export const vehiclesServices = { addVehicles, viewAllVehicles, viewVehicle };
