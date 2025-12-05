@@ -4,6 +4,7 @@ import path from "path";
 dotenv.config({ path: path.join(process.cwd(), ".env") });
 const config = {
   port: process.env.PORT,
+  postgres_connection: process.env.POSTGRESQL_CONNECTION_STRING,
 };
 
 export default config;
