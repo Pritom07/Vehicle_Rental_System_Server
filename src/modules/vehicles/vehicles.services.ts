@@ -31,4 +31,62 @@ const viewVehicle = async (id: string) => {
   return result;
 };
 
-export const vehiclesServices = { addVehicles, viewAllVehicles, viewVehicle };
+const updateVehicle = async (id: string, payLoad: Record<string, unknown>) => {
+  const {
+    vehicle_name,
+    type,
+    registration_number,
+    daily_rent_price,
+    availability_status,
+  } = payLoad;
+
+  const updates: Array<string> = [];
+  const values: Array<any> = [];
+  let totParameter = 1;
+
+  if (vehicle_name !== undefined) {
+    updates.push(`vehicle_name=$${totParameter}`);
+    values.push(vehicle_name);
+    totParameter++;
+  }
+
+  if (type !== undefined) {
+    updates.push(`type=$${totParameter}`);
+    values.push(type);
+    totParameter++;
+  }
+
+  if (registration_number !== undefined) {
+    updates.push(`registration_number=$${totParameter}`);
+    values.push(registration_number);
+    totParameter++;
+  }
+
+  if (daily_rent_price !== undefined) {
+    updates.push(`daily_rent_price=$${totParameter}`);
+    values.push(daily_rent_price);
+    totParameter++;
+  }
+
+  if (availability_status !== undefined) {
+    updates.push(`availability_status=$${totParameter}`);
+    values.push(availability_status);
+    totParameter++;
+  }
+
+  values.push(id);
+  const query = `
+  UPDATE Vehicles 
+  SET ${updates.join(",")} 
+  WHERE id=$${totParameter} RETURNING *`;
+
+  const result = await pool.query(query, values);
+  return result;
+};
+
+export const vehiclesServices = {
+  addVehicles,
+  viewAllVehicles,
+  viewVehicle,
+  updateVehicle,
+};

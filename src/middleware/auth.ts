@@ -16,7 +16,7 @@ const auth = (...roles: Array<string>) => {
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,
-        message: "Only admin can add vehicle",
+        message: "Only admin can add, update or delete vehicle",
       });
     }
     next();
