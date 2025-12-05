@@ -21,4 +21,9 @@ const addVehicles = async (payLoad: Record<string, unknown>) => {
   return result;
 };
 
-export const vehiclesServices = { addVehicles };
+const viewAllVehicles = async () => {
+  const result = await pool.query(`SELECT * FROM Vehicles`);
+  return result;
+};
+
+export const vehiclesServices = { addVehicles, viewAllVehicles };
