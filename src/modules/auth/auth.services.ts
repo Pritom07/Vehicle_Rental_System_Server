@@ -24,7 +24,7 @@ const signInUsers = async (payLoad: Record<string, unknown>) => {
     if (matched) {
       const secret: any = config.jwtSecret;
       const token = jwt.sign(
-        { name: user.name, email: user.email, role: user.role },
+        { id: user.id, name: user.name, email: user.email, role: user.role },
         secret,
         {
           expiresIn: "4d",

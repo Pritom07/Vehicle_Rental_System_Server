@@ -84,9 +84,15 @@ const updateVehicle = async (id: string, payLoad: Record<string, unknown>) => {
   return result;
 };
 
+const deleteVehicle = async (id: string) => {
+  const result = await pool.query(``);
+  return result;
+};
+
 export const vehiclesServices = {
   addVehicles,
   viewAllVehicles,
   viewVehicle,
   updateVehicle,
+  deleteVehicle,
 };

@@ -3,6 +3,7 @@ import config from "./config";
 import initTable from "./config/db";
 import { authRoutes } from "./modules/auth/auth.routes";
 import { vehiclesRoutes } from "./modules/vehicles/vehicles.routes";
+import { userRoutes } from "./modules/users/users.routes";
 
 const app = express();
 export const port = config.port;
@@ -14,6 +15,8 @@ initTable();
 app.use("/api/v1/auth", authRoutes);
 
 app.use("/api/v1/vehicles", vehiclesRoutes);
+
+app.use("/api/v1/users", userRoutes);
 
 app.get("/", async (req: Request, res: Response) => {
   res.send("Welcome to Vehicle Rental System");
