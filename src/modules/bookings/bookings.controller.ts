@@ -26,4 +26,30 @@ const createBookings = async (req: Request, res: Response) => {
   }
 };
 
-export const bookingsController = { createBookings };
+const viewBookings = async (req: Request, res: Response) => {
+  try {
+    let result;
+    if (req.user.role === "admin") {
+      result = await bookingsServices.viewAllBookings();
+      return res.status(200).json({
+        success: true,
+        message: "Bookings retrieved successfully",
+        data: result,
+      });
+    } else {
+      result = await bookingsServices.viewOwnBookings(req.user.id);
+      return res.status(200).json({
+        success: true,
+        message: "Your bookings retrieved successfully",
+        data: result,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: `Error Occured : ${err.message}`,
+    });
+  }
+};
+
+export const bookingsController = { createBookings, viewBookings };
