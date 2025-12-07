@@ -13,13 +13,18 @@ const auth = (...roles: Array<string>) => {
     }
     const decoded = jwt.verify(token, config.jwtSecret as string) as JwtPayload;
     req.user = decoded;
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "You are not allowed to perform this action",
-      });
+
+    const isOwnAllowed =
+      roles.includes("own") && req.user.id == req.params.userId;
+
+    if (roles.includes(req.user.role) || isOwnAllowed) {
+      return next();
     }
-    next();
+
+    return res.status(403).json({
+      success: false,
+      message: "You are not allowed to perform this action",
+    });
   };
 };
 
