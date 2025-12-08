@@ -1,45 +1,74 @@
 import { pool } from "../../config/db";
 
+const formatDate = (dateString: string) => {
+  if (
+    typeof dateString === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dateString)
+  ) {
+    return dateString;
+  }
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const statusChecking = (rent_end_date: string, status: string) => {
+  const endDate = new Date(rent_end_date).getTime();
+  if (endDate < Date.now()) {
+    return "returned";
+  } else {
+    return status;
+  }
+};
+
 const createBookings = async (payLoad: Record<string, any>) => {
   const { customer_id, vehicle_id, rent_start_date, rent_end_date } = payLoad;
   const subQuery = await pool.query(
-    `SELECT vehicle_name, daily_rent_price FROM Vehicles WHERE id=$1`,
+    `SELECT vehicle_name, daily_rent_price, availability_status FROM Vehicles WHERE id=$1`,
     [vehicle_id]
   );
 
-  const { vehicle_name, daily_rent_price } = subQuery.rows[0];
-  const rentEndDate: Date = new Date(rent_end_date);
-  const rentStartDate: Date = new Date(rent_start_date);
-  const days = Math.ceil(
-    (rentEndDate.getTime() - rentStartDate.getTime()) / (24 * 60 * 60 * 1000)
-  );
-  const total_price = days * Number(daily_rent_price);
+  const { vehicle_name, daily_rent_price, availability_status } =
+    subQuery.rows[0];
 
-  const mainQuery = await pool.query(
-    `INSERT INTO Bookings(customer_id, vehicle_id, rent_start_date, rent_end_date,total_price,status) VALUES($1,$2,$3, $4,$5,$6) RETURNING  id,
+  if (availability_status !== "available") {
+    return undefined;
+  } else {
+    const rentEndDate: Date = new Date(rent_end_date);
+    const rentStartDate: Date = new Date(rent_start_date);
+    const days = Math.ceil(
+      (rentEndDate.getTime() - rentStartDate.getTime()) / (24 * 60 * 60 * 1000)
+    );
+    const total_price = days * Number(daily_rent_price);
+
+    const mainQuery = await pool.query(
+      `INSERT INTO Bookings(customer_id, vehicle_id, rent_start_date, rent_end_date,total_price,status) VALUES($1,$2,$3, $4,$5,$6) RETURNING  id,
        customer_id,
        vehicle_id,
        TO_CHAR(rent_start_date, 'YYYY-MM-DD') as rent_start_date,
        TO_CHAR(rent_end_date, 'YYYY-MM-DD') as rent_end_date,
        total_price,
        status`,
-    [
-      customer_id,
+      [
+        customer_id,
+        vehicle_id,
+        rent_start_date,
+        rent_end_date,
+        total_price,
+        "active",
+      ]
+    );
+
+    await pool.query(`UPDATE Vehicles SET availability_status=$1 WHERE id=$2`, [
+      "booked",
       vehicle_id,
-      rent_start_date,
-      rent_end_date,
-      total_price,
-      "active",
-    ]
-  );
+    ]);
 
-  await pool.query(`UPDATE Vehicles SET availability_status=$1 WHERE id=$2`, [
-    "booked",
-    vehicle_id,
-  ]);
-
-  const result = { mainQuery, subQuery };
-  return result;
+    const result = { mainQuery, subQuery };
+    return result;
+  }
 };
 
 const viewAllBookings = async () => {
@@ -62,19 +91,21 @@ const viewAllBookings = async () => {
     );
     const customerInfoObj = customerInfo.rows[0];
 
-    const formatDate = (dateString: string) => {
-      if (
-        typeof dateString === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(dateString)
-      ) {
-        return dateString;
-      }
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
+    const statusResult = statusChecking(
+      formatDate(mainQueryArray[i].rent_end_date),
+      mainQueryArray[i].status
+    );
+
+    if (statusResult !== mainQueryArray[i].status) {
+      await pool.query(`UPDATE Bookings SET status=$1 WHERE id=$2`, [
+        statusResult,
+        mainQueryArray[i].id,
+      ]);
+      await pool.query(
+        `UPDATE Vehicles SET availability_status=$1 WHERE id=$2`,
+        ["available", mainQueryArray[i].vehicle_id]
+      );
+    }
 
     const resultentObj = {
       id: mainQueryArray[i].id,
@@ -83,7 +114,7 @@ const viewAllBookings = async () => {
       rent_start_date: formatDate(mainQueryArray[i].rent_start_date),
       rent_end_date: formatDate(mainQueryArray[i].rent_end_date),
       total_price: Number(mainQueryArray[i].total_price),
-      status: mainQueryArray[i].status,
+      status: statusResult,
       customer: customerInfoObj,
       vehicle: vehicleInfoObj,
     };
@@ -111,19 +142,21 @@ const viewOwnBookings = async (id: string) => {
     const vehicleInfoObj = vehicleInfo.rows[0];
     const { id, customer_id, ...remainings } = mainQueryArray[i];
 
-    const formatDate = (dateString: string) => {
-      if (
-        typeof dateString === "string" &&
-        /^\d{4}-\d{2}-\d{2}$/.test(dateString)
-      ) {
-        return dateString;
-      }
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
+    const statusResult = statusChecking(
+      formatDate(mainQueryArray[i].rent_end_date),
+      mainQueryArray[i].status
+    );
+
+    if (statusResult !== mainQueryArray[i].status) {
+      await pool.query(`UPDATE Bookings SET status=$1 WHERE id=$2`, [
+        statusResult,
+        mainQueryArray[i].id,
+      ]);
+      await pool.query(
+        `UPDATE Vehicles SET availability_status=$1 WHERE id=$2`,
+        ["available", mainQueryArray[i].vehicle_id]
+      );
+    }
 
     const resultantObj: Record<string, any> = {
       id: mainQueryArray[i].id,
@@ -131,17 +164,84 @@ const viewOwnBookings = async (id: string) => {
       rent_start_date: formatDate(remainings.rent_start_date),
       rent_end_date: formatDate(remainings.rent_end_date),
       total_price: Number(remainings.total_price),
+      status: statusResult,
       vehicle: vehicleInfoObj,
     };
 
     result.push(resultantObj);
   }
-
   return result;
+};
+
+const updateBookings_AdminEnd = async (
+  bookingId: string,
+  payLoad: Record<string, any>
+) => {
+  const { status } = payLoad;
+  const mainQuery = await pool.query(
+    `UPDATE Bookings SET status=$1 WHERE id=$2 RETURNING *`,
+    [status, bookingId]
+  );
+  const mainQueryObj = mainQuery.rows[0];
+  const subQuery = await pool.query(
+    `UPDATE Vehicles SET availability_status=$1 WHERE id=$2 RETURNING availability_status`,
+    ["available", mainQueryObj.vehicle_id]
+  );
+  const subQueryObj = subQuery.rows[0];
+
+  const result = {
+    id: mainQueryObj.id,
+    customer_id: mainQueryObj.customer_id,
+    vehicle_id: mainQueryObj.vehicle_id,
+    rent_start_date: formatDate(mainQueryObj.rent_start_date),
+    rent_end_date: formatDate(mainQueryObj.rent_end_date),
+    total_price: Number(mainQueryObj.total_price),
+    status: mainQueryObj.status,
+    vehicle: subQueryObj,
+  };
+  return result;
+};
+
+const updateBookings_CustomerEnd = async (
+  bookingId: string,
+  payLoad: Record<string, any>
+) => {
+  const { status } = payLoad;
+  const subQuery = await pool.query(
+    `SELECT rent_start_date FROM Bookings WHERE id=$1`,
+    [bookingId]
+  );
+  const { rent_start_date } = subQuery.rows[0];
+  if (new Date(rent_start_date).getTime() > new Date().getTime()) {
+    const mainQuery = await pool.query(
+      `UPDATE Bookings SET status=$1 WHERE id=$2 RETURNING *`,
+      [status, bookingId]
+    );
+    const mainQueryObj = mainQuery.rows[0];
+
+    await pool.query(`UPDATE Vehicles SET availability_status=$1 WHERE id=$2`, [
+      "available",
+      mainQueryObj.vehicle_id,
+    ]);
+
+    const result = {
+      id: mainQueryObj.id,
+      customer_id: mainQueryObj.customer_id,
+      vehicle_id: mainQueryObj.vehicle_id,
+      rent_start_date: formatDate(mainQueryObj.rent_start_date),
+      rent_end_date: formatDate(mainQueryObj.rent_end_date),
+      total_price: Number(mainQueryObj.total_price),
+      status: mainQueryObj.status,
+    };
+    return result;
+  }
+  return undefined;
 };
 
 export const bookingsServices = {
   createBookings,
   viewAllBookings,
   viewOwnBookings,
+  updateBookings_AdminEnd,
+  updateBookings_CustomerEnd,
 };
