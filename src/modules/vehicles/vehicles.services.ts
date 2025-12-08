@@ -85,8 +85,20 @@ const updateVehicle = async (id: string, payLoad: Record<string, unknown>) => {
 };
 
 const deleteVehicle = async (id: string) => {
-  const result = await pool.query(``);
-  return result;
+  const subQuery = await pool.query(
+    `SELECT status FROM Bookings WHERE vehicle_id=$1 ORDER BY rent_start_date DESC LIMIT 1`,
+    [id]
+  );
+  const { status } = subQuery.rows[0];
+  if (status !== "active") {
+    const mainQuery = await pool.query(
+      `DELETE FROM Vehicles WHERE id=$1 RETURNING *`,
+      [id]
+    );
+    return mainQuery.rowCount;
+  } else {
+    return 0;
+  }
 };
 
 export const vehiclesServices = {
