@@ -48,4 +48,28 @@ const updateUsers = async (req: Request, res: Response) => {
   }
 };
 
-export const userControllers = { viewAllUsers, updateUsers };
+const deleteUser = async (req: Request, res: Response) => {
+  try {
+    const result: any = await userServices.deleteUser(
+      req.params.userId as string
+    );
+    if (result > 0) {
+      return res.status(200).json({
+        success: true,
+        message: "User deleted successfully",
+      });
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: `Sorry! you can't delete this user.`,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: `Error Occured : ${err.message}`,
+    });
+  }
+};
+
+export const userControllers = { viewAllUsers, updateUsers, deleteUser };

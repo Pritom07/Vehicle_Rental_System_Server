@@ -97,8 +97,25 @@ const updateUser_OwnEnd = async (
   return result;
 };
 
+const deleteUser = async (userId: string) => {
+  const subQuery = await pool.query(
+    `SELECT status FROM Bookings WHERE customer_id=$1 ORDER BY rent_start_date DESC LIMIT 1`,
+    [userId]
+  );
+  const { status } = subQuery.rows[0];
+  if (status !== "active") {
+    const mainQuery = await pool.query(
+      `DELETE FROM Users WHERE id=$1 RETURNING *`,
+      [userId]
+    );
+    return mainQuery.rowCount;
+  }
+  return 0;
+};
+
 export const userServices = {
   viewAllUsers,
   updateUsers_AdminEnd,
   updateUser_OwnEnd,
+  deleteUser,
 };
